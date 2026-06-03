@@ -1,0 +1,328 @@
+{
+  "name": "Task 2 - Crypto Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "93150c6a-3c1a-4dda-9f1f-bc796ee51b57",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.coingecko.com/api/v3/coins/markets",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "vs_currency",
+              "value": "usd"
+            },
+            {
+              "name": "order",
+              "value": "market_cap_desc"
+            },
+            {
+              "name": "per_page",
+              "value": "5"
+            },
+            {
+              "name": "page",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "63398d13-7fb8-419d-81de-49f057568c02",
+      "name": "Get Top 5 Coins",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        448
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItems = $input.all();\n\nconst coins = inputItems.map(item => item.json);\n\nconst top5 = coins.map((coin, i) => ({\n  rank: i + 1,\n  id: coin.id,\n  name: coin.name,\n  symbol: coin.symbol.toUpperCase(),\n  price: coin.current_price,\n  change24h: parseFloat(coin.price_change_percentage_24h?.toFixed(2)),\n  marketCap: (coin.market_cap / 1e9).toFixed(2) + 'B'\n}));\n\nreturn [{ json: { coins: top5, topCoin: top5[0] } }];"
+      },
+      "id": "4caa98f2-096f-4496-9a9e-06c6d744fbce",
+      "name": "Format Top 5",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.coingecko.com/api/v3/coins/{{ $json.topCoin.id }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "localization",
+              "value": "false"
+            },
+            {
+              "name": "tickers",
+              "value": "false"
+            },
+            {
+              "name": "market_data",
+              "value": "true"
+            },
+            {
+              "name": "community_data",
+              "value": "false"
+            },
+            {
+              "name": "developer_data",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6cb92b83-bcd7-4198-964d-cd3c7ee2343c",
+      "name": "Get Top Coin Detail",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        912,
+        448
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $(\"Format Top 5\").first().json.topCoin.change24h }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d1072ceb-bcb5-4b67-b807-76dd9b4b7b3e",
+      "name": "High Movement?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5691449303",
+        "text": "=🚨 *Crypto Alert - High Movement!*\n\nTop Coin: *{{ $(\"Format Top 5\").first().json.coins[0].name }}* ({{ $(\"Format Top 5\").first().json.coins[0].symbol }})\n24h Change: *{{ $(\"Format Top 5\").first().json.coins[0].change24h }}%*\nPrice: ${{ $(\"Format Top 5\").first().json.coins[0].price }}\n\n📊 Top 5 Right Now:\n1. {{ $(\"Format Top 5\").first().json.coins[0].name }} - ${{ $(\"Format Top 5\").first().json.coins[0].price }} ({{ $(\"Format Top 5\").first().json.coins[0].change24h }}%)\n2. {{ $(\"Format Top 5\").first().json.coins[1].name }} - ${{ $(\"Format Top 5\").first().json.coins[1].price }} ({{ $(\"Format Top 5\").first().json.coins[1].change24h }}%)\n3. {{ $(\"Format Top 5\").first().json.coins[2].name }} - ${{ $(\"Format Top 5\").first().json.coins[2].price }} ({{ $(\"Format Top 5\").first().json.coins[2].change24h }}%)\n4. {{ $(\"Format Top 5\").first().json.coins[3].name }} - ${{ $(\"Format Top 5\").first().json.coins[3].price }} ({{ $(\"Format Top 5\").first().json.coins[3].change24h }}%)\n5. {{ $(\"Format Top 5\").first().json.coins[4].name }} - ${{ $(\"Format Top 5\").first().json.coins[4].price }} ({{ $(\"Format Top 5\").first().json.coins[4].change24h }}%)",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "74bc061c-3f59-4fc3-afe8-76cb9e2abd59",
+      "name": "Alert High Movement",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        352
+      ],
+      "webhookId": "93613151-71f8-41dd-a1e5-5a6ffd72c292",
+      "credentials": {
+        "telegramApi": {
+          "id": "1aCycx2LUsCBCxsJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5691449303",
+        "text": "=✅ *Daily Crypto Brief - Markets Stable*\n\nTop Coin: *{{ $(\"Format Top 5\").first().json.coins[0].name }}* ({{ $(\"Format Top 5\").first().json.coins[0].symbol }})\n24h Change: {{ $(\"Format Top 5\").first().json.coins[0].change24h }}%\nPrice: ${{ $(\"Format Top 5\").first().json.coins[0].price }}\n\n📊 Top 5 Right Now:\n1. {{ $(\"Format Top 5\").first().json.coins[0].name }} - ${{ $(\"Format Top 5\").first().json.coins[0].price }} ({{ $(\"Format Top 5\").first().json.coins[0].change24h }}%)\n2. {{ $(\"Format Top 5\").first().json.coins[1].name }} - ${{ $(\"Format Top 5\").first().json.coins[1].price }} ({{ $(\"Format Top 5\").first().json.coins[1].change24h }}%)\n3. {{ $(\"Format Top 5\").first().json.coins[2].name }} - ${{ $(\"Format Top 5\").first().json.coins[2].price }} ({{ $(\"Format Top 5\").first().json.coins[2].change24h }}%)\n4. {{ $(\"Format Top 5\").first().json.coins[3].name }} - ${{ $(\"Format Top 5\").first().json.coins[3].price }} ({{ $(\"Format Top 5\").first().json.coins[3].change24h }}%)\n5. {{ $(\"Format Top 5\").first().json.coins[4].name }} - ${{ $(\"Format Top 5\").first().json.coins[4].price }} ({{ $(\"Format Top 5\").first().json.coins[4].change24h }}%)",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "21344ca8-6b6f-4343-b195-41158e03c39c",
+      "name": "Brief Normal",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1360,
+        544
+      ],
+      "webhookId": "165492c7-10a0-422a-b390-ccceb9e78d8e",
+      "credentials": {
+        "telegramApi": {
+          "id": "1aCycx2LUsCBCxsJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "9d771ae9-7c4f-4b95-9ea3-02ae9433c4c5",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5691449303",
+        "text": "=⚠️ Workflow Error!\n{{ $json.execution.error.message }}\nWorkflow: {{ $json.workflow.name }}",
+        "additionalFields": {}
+      },
+      "id": "e784234f-7e1b-4803-bc78-517d9c5f2c32",
+      "name": "Error Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        464,
+        768
+      ],
+      "webhookId": "f71ca1bc-e0fb-47f8-aacf-7f72118386ee",
+      "credentials": {
+        "telegramApi": {
+          "id": "1aCycx2LUsCBCxsJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot8978188452:AAHMmfSe9ThSQm2arOaVFp6V2-oTFVwmfPY/getUpdates",
+        "options": {}
+      },
+      "id": "507d6755-1c8d-4fb8-acd7-83c30ce356fc",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        240,
+        128
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Top 5 Coins",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Top 5 Coins": {
+      "main": [
+        [
+          {
+            "node": "Format Top 5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Top 5": {
+      "main": [
+        [
+          {
+            "node": "Get Top Coin Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Top Coin Detail": {
+      "main": [
+        [
+          {
+            "node": "High Movement?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Movement?": {
+      "main": [
+        [
+          {
+            "node": "Alert High Movement",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Brief Normal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2db91463-94b3-47fa-b790-f9112462ed18",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "620279459d37924983fdcec0691f2a9e321c7449c1fa644d7e3b3129290394eb"
+  },
+  "id": "j6PUnkqvLSRK66KG",
+  "tags": []
+}

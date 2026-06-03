@@ -1,0 +1,143 @@
+{
+  "name": "Bonus - Site Monitor - saucedemo.com",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "id": "13b8ce97-7684-4c0d-be7b-a74a5c08b417",
+      "name": "Every 5 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.saucedemo.com",
+        "options": {}
+      },
+      "id": "79ab93bd-fa9b-45a2-9602-abf33d58ce94",
+      "name": "Ping saucedemo.com",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        208
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              },
+              "id": "d98bda1c-7865-4d55-871b-17825cbc70ea"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5c3784e8-69d5-4598-9309-0bc40d6bb853",
+      "name": "Site Down?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        688,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "5691449303",
+        "text": "=🔴 Site Down Alert!\n\nsaucedemo.com is not responding.\nError: {{ $json.error }}\nTime: {{ $now.toISO() }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "0e68f42d-9b70-48da-abce-c33509723ade",
+      "name": "Alert Site Down",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        208
+      ],
+      "webhookId": "7a0c686d-ce74-4448-a0e4-0351806e08a2",
+      "credentials": {
+        "telegramApi": {
+          "id": "1aCycx2LUsCBCxsJ",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Ping saucedemo.com",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ping saucedemo.com": {
+      "main": [
+        [
+          {
+            "node": "Site Down?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Site Down?": {
+      "main": [
+        [
+          {
+            "node": "Alert Site Down",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4df155b2-24be-4b20-9389-61a26e54cc3a",
+  "meta": {
+    "instanceId": "620279459d37924983fdcec0691f2a9e321c7449c1fa644d7e3b3129290394eb"
+  },
+  "id": "MS4TQIRNqf1pM7zZ",
+  "tags": []
+}
